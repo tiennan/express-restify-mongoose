@@ -16,7 +16,8 @@ function getDefaults () {
     runValidators: false,
     allowRegex: true,
     private: [],
-    protected: []
+    protected: [],
+    disabledEndpoints: [],
   })
 }
 
@@ -38,6 +39,9 @@ const restify = function (app, model, opts = {}) {
 
   if (!_.isArray(options.protected)) {
     throw new Error('"options.protected" must be an array of fields')
+  }
+  if (!_.isArray(options.disabledEndpoints)) {
+    throw new Error('"options.disabledEndpoints" must be an array of endpoints')
   }
 
   model.schema.eachPath((name, path) => {
@@ -135,19 +139,27 @@ const restify = function (app, model, opts = {}) {
   })
 
   const accessMiddleware = options.access ? access(options) : []
+  const disabledEndpointSet = new Set(options.disabledEndpoints)
 
-  app.get(uriItems, prepareQuery, options.preMiddleware, options.preRead, accessMiddleware, ops.getItems, prepareOutput)
-  app.get(uriCount, prepareQuery, options.preMiddleware, options.preRead, accessMiddleware, ops.getCount, prepareOutput)
-  app.get(uriItem, prepareQuery, options.preMiddleware, options.preRead, accessMiddleware, ops.getItem, prepareOutput)
-  app.get(uriShallow, prepareQuery, options.preMiddleware, options.preRead, accessMiddleware, ops.getShallow, prepareOutput)
-
-  app.post(uriItems, prepareQuery, ensureContentType, options.preMiddleware, options.preCreate, accessMiddleware, ops.createObject, prepareOutput)
-  app.post(uriItem, util.deprecate(prepareQuery, 'express-restify-mongoose: in a future major version, the POST method to update resources will be removed. Use PATCH instead.'), ensureContentType, options.preMiddleware, options.findOneAndUpdate ? [] : filterAndFindById, options.preUpdate, accessMiddleware, ops.modifyObject, prepareOutput)
-
-  app.put(uriItem, util.deprecate(prepareQuery, 'express-restify-mongoose: in a future major version, the PUT method will replace rather than update a resource. Use PATCH instead.'), ensureContentType, options.preMiddleware, options.findOneAndUpdate ? [] : filterAndFindById, options.preUpdate, accessMiddleware, ops.modifyObject, prepareOutput)
-  app.patch(uriItem, prepareQuery, ensureContentType, options.preMiddleware, options.findOneAndUpdate ? [] : filterAndFindById, options.preUpdate, accessMiddleware, ops.modifyObject, prepareOutput)
-
-  app.delete(uriItems, prepareQuery, options.preMiddleware, options.preDelete, ops.deleteItems, prepareOutput)
+  if (!disabledEndpointSet.has('getItems'))
+    app.get(uriItems, prepareQuery, options.preMiddleware, options.preRead, accessMiddleware, ops.getItems, prepareOutput)
+  if (!disabledEndpointSet.has('getItemsCount'))
+    app.get(uriCount, prepareQuery, options.preMiddleware, options.preRead, accessMiddleware, ops.getCount, prepareOutput)
+  if (!disabledEndpointSet.has('getItem'))
+    app.get(uriItem, prepareQuery, options.preMiddleware, options.preRead, accessMiddleware, ops.getItem, prepareOutput)
+  if (!disabledEndpointSet.has('getItemShallow'))
+    app.get(uriShallow, prepareQuery, options.preMiddleware, options.preRead, accessMiddleware, ops.getShallow, prepareOutput)
+  if (!disabledEndpointSet.has('postItems'))
+    app.post(uriItems, prepareQuery, ensureContentType, options.preMiddleware, options.preCreate, accessMiddleware, ops.createObject, prepareOutput)
+  if (!disabledEndpointSet.has('postItem'))
+    app.post(uriItem, util.deprecate(prepareQuery, 'express-restify-mongoose: in a future major version, the POST method to update resources will be removed. Use PATCH instead.'), ensureContentType, options.preMiddleware, options.findOneAndUpdate ? [] : filterAndFindById, options.preUpdate, accessMiddleware, ops.modifyObject, prepareOutput)
+  if (!disabledEndpointSet.has('putItem'))
+    app.put(uriItem, util.deprecate(prepareQuery, 'express-restify-mongoose: in a future major version, the PUT method will replace rather than update a resource. Use PATCH instead.'), ensureContentType, options.preMiddleware, options.findOneAndUpdate ? [] : filterAndFindById, options.preUpdate, accessMiddleware, ops.modifyObject, prepareOutput)
+  if (!disabledEndpointSet.has('patchItem'))
+    app.patch(uriItem, prepareQuery, ensureContentType, options.preMiddleware, options.findOneAndUpdate ? [] : filterAndFindById, options.preUpdate, accessMiddleware, ops.modifyObject, prepareOutput)
+  if (!disabledEndpointSet.has('deleteItems'))
+    app.delete(uriItems, prepareQuery, options.preMiddleware, options.preDelete, ops.deleteItems, prepareOutput)
+  if (!disabledEndpointSet.has('deleteItem'))
   app.delete(uriItem, prepareQuery, options.preMiddleware, options.findOneAndRemove ? [] : filterAndFindById, options.preDelete, ops.deleteItem, prepareOutput)
 
   return uriItems
